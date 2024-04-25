@@ -36,8 +36,8 @@ if not os.path.exists(train_bin_path) or not os.path.exists(val_bin_path):
     val_encs = encoder.encode_ordinary(val_data)
 
     # Converting Train and Val to np arrays
-    train_encs = np.array(train_encs, dtype=np.float16)
-    val_encs = np.array(val_encs, dtype=np.float16)
+    train_encs = np.array(train_encs, dtype=np.uint16)
+    val_encs = np.array(val_encs, dtype=np.uint16)
 
     # Saving embeds to bin files
     train_encs.tofile(os.path.join(os.path.dirname(__file__), 'train.bin'))
