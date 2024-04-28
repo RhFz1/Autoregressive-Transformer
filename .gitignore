@@ -2,3 +2,4 @@
 /data/shakespere/train.bin
 /data/shakespere/val.bin
 /data/shakespere/input.txt
+/.env
