@@ -14,7 +14,6 @@ device_type = 'cuda'
 
 data_dir = os.environ.get('data_path') 
 def data_loader(split):
-    X, y = np.array(), np.array()
     if split == 'train':
         data_path = os.path.join(data_dir, 'train.bin')
         data = np.memmap(data_path, dtype=np.uint16, mode='r')
@@ -34,5 +33,7 @@ def data_loader(split):
     
     return x, y
 
+x, y = data_loader('train')
 
-        
+print(x)
+
