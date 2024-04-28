@@ -21,6 +21,9 @@ if not os.path.exists(train_bin_path) or not os.path.exists(val_bin_path):
     # Reading the input text
     with open(input_file_path, mode='r', encoding ='utf-8') as file:
         data = file.read()
+    
+    if os.path.exists(input_file_path):
+        os.remove(input_file_path)
 
     # Parameters for splitting the data
     N = len(data)
