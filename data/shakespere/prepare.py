@@ -42,8 +42,3 @@ if not os.path.exists(train_bin_path) or not os.path.exists(val_bin_path):
     # Saving embeds to bin files
     train_encs.tofile(os.path.join(os.path.dirname(__file__), 'train.bin'))
     val_encs.tofile(os.path.join(os.path.dirname(__file__), 'val.bin'))
-
-
-
-
-
