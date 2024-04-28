@@ -25,8 +25,8 @@ def data_loader(split):
         data = np.memmap(data_path, dtype=np.uint16, mode='r')
     
     ix = torch.randint(len(data) - block_size, (batch_size, ))
-    x = torch.stack([torch.from_numpy(data[i : i + block_size].astype(np.int16)) for i in ix])
-    y = torch.stack([torch.from_numpy(data[i + 1 : i + block_size + 1].astype(np.int16)) for i in ix])
+    x = torch.stack([torch.from_numpy(data[i : i + block_size].astype(np.int32)) for i in ix])
+    y = torch.stack([torch.from_numpy(data[i + 1 : i + block_size + 1].astype(np.int32)) for i in ix])
 
     if device_type == 'cuda':
         x, y = x.pin_memory().to(device=device_type,non_blocking=True),y.pin_memory().to(device=device_type,non_blocking=True)
