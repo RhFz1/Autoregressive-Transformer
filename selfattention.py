@@ -78,9 +78,9 @@ class Feedforward(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, n_embd),
+            nn.Linear(n_embd, 4 * n_embd),
             nn.ReLU(),
-            nn.Linear(n_embd, n_embd)
+            nn.Linear(4 * n_embd, n_embd)
         )
     def forward(self, x):
         return self.net(x)
@@ -127,9 +127,12 @@ class Block(nn.Module):
         n_group = n_embd // n_heads
         self.sa_heads = MultiHeadedAttention(n_heads=n_heads, head_size=n_group)
         self.ffwd = Feedforward(n_embd=n_embd)
+        self.ln1 = nn.LayerNorm(n_embd)
+        self.ln2 = nn.LayerNorm(n_embd)
+
     def forward(self, x):
-        x = x + self.sa_heads(x) # (B, T, C)
-        x = x + self.ffwd(x) # (B, T, C)
+        x = x + self.sa_heads(self.ln1(x)) # (B, T, C)
+        x = x + self.ffwd(self.ln2(x)) # (B, T, C)
         return x
 
 # Bigram Model
