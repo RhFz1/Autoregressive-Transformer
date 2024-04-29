@@ -139,12 +139,13 @@ class Block(nn.Module):
 class LanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.token_embedding = nn.Embedding(vocab_size, n_embd)
+        self.token_embedding = nn.Embedding(vocab_size, n_embd) 
         self.position_embedding = nn.Embedding(block_size, n_embd)
         self.transblock = nn.Sequential(
             Block(4, n_embd),
             Block(4, n_embd),
-            Block(4, n_embd)
+            Block(4, n_embd),
+            nn.LayerNorm(n_embd)
         )
         self.lm_head = nn.Linear(n_embd, vocab_size)
     def forward(self, idx, targets=None):
