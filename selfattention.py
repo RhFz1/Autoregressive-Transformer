@@ -115,15 +115,30 @@ class MultiHeadedAttention(nn.Module):
         self.heads = nn.ModuleList([Head(head_size) for _ in range(n_heads)])
     def forward(self, x):
         return torch.cat([h(x) for h in self.heads], dim=-1)
-    
+
+# Single Transformer Block
+class Block(nn.Module):
+    def __init__(self, n_heads, n_embd):
+        super().__init__()
+        n_group = n_embd // n_heads
+        self.sa_heads = MultiHeadedAttention(n_heads=n_heads, head_size=n_group)
+        self.ffwd = Feedforward(n_embd=n_embd)
+    def forward(self, x):
+        x = self.sa_heads(x)
+        x = self.ffwd(x)
+        return x
+
 # Bigram Model
 class LanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, n_embd)
         self.position_embedding = nn.Embedding(block_size, n_embd)
-        self.sa_heads = MultiHeadedAttention(4, n_embd // 4)
-        self.ffwd = Feedforward(n_embd)
+        self.transblock = nn.Sequential(
+            Block(4, n_embd),
+            Block(4, n_embd),
+            Block(4, n_embd)
+        )
         self.lm_head = nn.Linear(n_embd, vocab_size)
     def forward(self, idx, targets=None):
         B, T = idx.shape
@@ -131,8 +146,9 @@ class LanguageModel(nn.Module):
         tok_embd = self.token_embedding(idx) # (B, T, C)
         pos_embd = self.position_embedding(torch.arange(T, device=device)) # (T, C)
         x = tok_embd + pos_embd # (B, T, C)
-        x = self.sa_heads(x)
-        x = self.ffwd(x) # Adding a linear head just before we compute logits to give it time to think
+        x = self.transblock(x)
+        #x = self.sa_heads(x)
+        #x = self.ffwd(x) # Adding a linear head just before we compute logits to give it time to think
         logits = self.lm_head(x) # It is (B,T,C)
 
         if targets is None:
