@@ -73,6 +73,18 @@ def get_batch(split):
     x, y = x.to(device=device), y.to(device=device)
     return x, y
 
+# Feed Forward simple ANN
+class Feedforward(nn.Module):
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, n_embd),
+            nn.ReLU6()
+        )
+    def forward(self, x):
+        return self.net(x)
+
+# Single Attention Block
 class Head(nn.Module):
     def __init__(self, head_size):
         super().__init__()
@@ -94,6 +106,8 @@ class Head(nn.Module):
         v = self.value(x)
         out = wei @ v
         return out # (B, T, head_size)
+
+# Multiheaded Attention block
 class MultiHeadedAttention(nn.Module):
     def __init__(self, n_heads, head_size):
         super().__init__()
@@ -109,6 +123,7 @@ class LanguageModel(nn.Module):
         self.token_embedding = nn.Embedding(vocab_size, n_embd)
         self.position_embedding = nn.Embedding(block_size, n_embd)
         self.sa_heads = MultiHeadedAttention(4, n_embd // 4)
+        self.ffwd = Feedforward(n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
     def forward(self, idx, targets=None):
         B, T = idx.shape
@@ -117,6 +132,7 @@ class LanguageModel(nn.Module):
         pos_embd = self.position_embedding(torch.arange(T, device=device)) # (T, C)
         x = tok_embd + pos_embd # (B, T, C)
         x = self.sa_heads(x)
+        x = self.ffwd(x) # Adding a linear head just before we compute logits to give it time to think
         logits = self.lm_head(x) # It is (B,T,C)
 
         if targets is None:
