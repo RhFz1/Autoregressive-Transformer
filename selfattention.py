@@ -79,7 +79,8 @@ class Feedforward(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, n_embd),
-            nn.ReLU6()
+            nn.ReLU(),
+            nn.Linear(n_embd, n_embd)
         )
     def forward(self, x):
         return self.net(x)
@@ -113,8 +114,11 @@ class MultiHeadedAttention(nn.Module):
         super().__init__()
         self.n_heads = n_heads
         self.heads = nn.ModuleList([Head(head_size) for _ in range(n_heads)])
+        self.proj = nn.Linear(n_embd, n_embd)
     def forward(self, x):
-        return torch.cat([h(x) for h in self.heads], dim=-1)
+        x = torch.cat([h(x) for h in self.heads], dim=-1)
+        x = self.proj(x)
+        return x
 
 # Single Transformer Block
 class Block(nn.Module):
@@ -124,8 +128,8 @@ class Block(nn.Module):
         self.sa_heads = MultiHeadedAttention(n_heads=n_heads, head_size=n_group)
         self.ffwd = Feedforward(n_embd=n_embd)
     def forward(self, x):
-        x = self.sa_heads(x)
-        x = self.ffwd(x)
+        x = x + self.sa_heads(x) # (B, T, C)
+        x = x + self.ffwd(x) # (B, T, C)
         return x
 
 # Bigram Model
