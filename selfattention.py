@@ -16,13 +16,16 @@ train_iters=5000
 n_embd = 384
 n_heads = 6
 n_layer =  6
-block_size = 128
+block_size = 96
 batch_size = 32
 split = 0.9
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-eval_iters = 20
-eval_interval = 10
+eval_iters = 50
+eval_interval = 50
 dropout=0.2
+out_dir = '/models'
+model_args = dict(n_layer=n_layer, n_head=n_heads, n_embd=n_embd, block_size=block_size,
+                 vocab_size=None, dropout=dropout)
 
 # Reading data
 if not os.path.exists('input.txt'):
@@ -189,13 +192,27 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 # training loop
 
+best_val_loss = 4.00
+
 for iter in range(train_iters):
 
     # every eval_interval try to evaluate the loss
     if iter % eval_interval == 0:
         losses = estimate_loss()
         print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
-    
+    if losses['val'] < best_val_loss:
+        best_val_loss = losses['val']
+        if iter > 0:
+            checkpoint = {
+                'model' : model.state_dict(),
+                'optimizer' : optimizer.state_dict(),
+                'model_args' : model_args,
+                'iter_num' : iter,
+                'best_val_loss': best_val_loss,
+            }
+            print(f"saving model checkpoint to {out_dir}")
+            torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))
+
     x, y = get_batch('train')
     logits, loss = model(x, y)
     optimizer.zero_grad(set_to_none=True)
