@@ -2,9 +2,14 @@ import os
 import time
 import torch
 import requests
+import argparse
 import numpy as np
 import torch.nn as nn
 from torch.nn import functional as F
+
+parser = argparse.ArgumentParser(description="file contains raw implementation of a transformer")
+parser.add_argument('--resume', help="Resume training or start new", default=False, type=bool)
+args = parser.parse_args()
 
 
 # for calculating script time
@@ -23,7 +28,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 50
 eval_interval = 50
 dropout=0.2
-out_dir = '/models'
+out_dir = './models'
 model_args = dict(n_layer=n_layer, n_head=n_heads, n_embd=n_embd, block_size=block_size,
                  vocab_size=None, dropout=dropout)
 
@@ -185,14 +190,26 @@ class LanguageModel(nn.Module):
 
 # Instantiating and moving the model to device.
 model = LanguageModel()
-model = model.to(device=device)
-
 # creating optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
-# training loop
-
+# best_val_loss so far
 best_val_loss = 4.00
+
+if args.resume:
+    print("Resuming Training!!")
+
+    checkpoint = torch.load(os.path.join(out_dir, 'ckpt.pt'), map_location=device)
+    model.load_state_dict(checkpoint['model'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+        # Move optimizer's state to the same device
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to(device)
+    best_val_loss = checkpoint['best_val_loss']
+
+model = model.to(device=device)
+# training loop
 
 for iter in range(train_iters):
 
