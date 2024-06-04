@@ -2,9 +2,14 @@ import os
 import time
 import torch
 import requests
+import argparse
 import numpy as np
 import torch.nn as nn
 from torch.nn import functional as F
+
+parser = argparse.ArgumentParser(description="file contains raw implementation of a transformer")
+parser.add_argument('--resume', help="Resume training or start new", default=False, type=bool)
+args = parser.parse_args()
 
 
 # for calculating script time
@@ -16,13 +21,16 @@ train_iters=5000
 n_embd = 384
 n_heads = 6
 n_layer =  6
-block_size = 128
+block_size = 96
 batch_size = 32
 split = 0.9
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-eval_iters = 20
-eval_interval = 10
+eval_iters = 50
+eval_interval = 50
 dropout=0.2
+out_dir = './models'
+model_args = dict(n_layer=n_layer, n_head=n_heads, n_embd=n_embd, block_size=block_size,
+                 vocab_size=None, dropout=dropout)
 
 # Reading data
 if not os.path.exists('input.txt'):
@@ -182,11 +190,25 @@ class LanguageModel(nn.Module):
 
 # Instantiating and moving the model to device.
 model = LanguageModel()
-model = model.to(device=device)
-
 # creating optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+# best_val_loss so far
+best_val_loss = 4.00
 
+if args.resume:
+    print("Resuming Training!!")
+
+    checkpoint = torch.load(os.path.join(out_dir, 'ckpt.pt'), map_location=device)
+    model.load_state_dict(checkpoint['model'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+        # Move optimizer's state to the same device
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to(device)
+    best_val_loss = checkpoint['best_val_loss']
+
+model = model.to(device=device)
 # training loop
 
 for iter in range(train_iters):
@@ -195,7 +217,19 @@ for iter in range(train_iters):
     if iter % eval_interval == 0:
         losses = estimate_loss()
         print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
-    
+    if losses['val'] < best_val_loss:
+        best_val_loss = losses['val']
+        if iter > 0:
+            checkpoint = {
+                'model' : model.state_dict(),
+                'optimizer' : optimizer.state_dict(),
+                'model_args' : model_args,
+                'iter_num' : iter,
+                'best_val_loss': best_val_loss,
+            }
+            print(f"saving model checkpoint to {out_dir}")
+            torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))
+
     x, y = get_batch('train')
     logits, loss = model(x, y)
     optimizer.zero_grad(set_to_none=True)
