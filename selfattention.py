@@ -17,7 +17,8 @@ t0 = time.time()
 
 # HyperParameters
 learning_rate=3e-4
-train_iters=5000
+train_iters=1000
+grad_accum_steps=25
 n_embd = 384
 n_heads = 6
 n_layer =  6
@@ -25,8 +26,8 @@ block_size = 96
 batch_size = 32
 split = 0.9
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-eval_iters = 50
-eval_interval = 50
+eval_iters = 20
+eval_interval = 5
 dropout=0.2
 out_dir = './models'
 model_args = dict(n_layer=n_layer, n_head=n_heads, n_embd=n_embd, block_size=block_size,
@@ -230,10 +231,14 @@ for iter in range(train_iters):
             print(f"saving model checkpoint to {out_dir}")
             torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))
 
-    x, y = get_batch('train')
-    logits, loss = model(x, y)
     optimizer.zero_grad(set_to_none=True)
-    loss.backward()
+    lossi = 0.0
+    for microstep in range(grad_accum_steps):
+        x, y = get_batch('train')
+        logits, loss = model(x, y)
+        loss.backward() # accumulating the gradients
+        lossi += loss.item() / grad_accum_steps
+    norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     optimizer.step()
 
 context = torch.zeros((1, 1), dtype=torch.int32, device=device)
