@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 parser = argparse.ArgumentParser(description="file contains raw implementation of a transformer")
-parser.add_argument('--resume', help="Resume training or start new", default=False, type=bool)
+parser.add_argument('--resume', help="Resume training or start new", default=True, type=bool)
 args = parser.parse_args()
 
 
@@ -16,20 +16,20 @@ args = parser.parse_args()
 t0 = time.time()
 
 # HyperParameters
-learning_rate=3e-4
+learning_rate=3e-5
 train_iters=1000
-grad_accum_steps=25
+grad_accum_steps=24
 n_embd = 384
-n_heads = 6
-n_layer =  6
-block_size = 96
-batch_size = 32
+n_heads = 8
+n_layer =  4
+block_size = 128
+batch_size = 16
 split = 0.9
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 20
 eval_interval = 5
 dropout=0.2
-out_dir = './models'
+out_dir = '/home/syednoor/Desktop/FAIR/Autoregressive-Transformer/models'
 model_args = dict(n_layer=n_layer, n_head=n_heads, n_embd=n_embd, block_size=block_size,
                  vocab_size=None, dropout=dropout)
 
@@ -199,7 +199,7 @@ best_val_loss = 4.00
 if args.resume:
     print("Resuming Training!!")
 
-    checkpoint = torch.load(os.path.join(out_dir, 'ckpt.pt'), map_location=device)
+    checkpoint = torch.load(os.path.join(out_dir, 'ckpt_00.pt'), map_location=device)
     model.load_state_dict(checkpoint['model'])
     optimizer.load_state_dict(checkpoint['optimizer'])
         # Move optimizer's state to the same device
@@ -210,6 +210,7 @@ if args.resume:
     best_val_loss = checkpoint['best_val_loss']
 
 model = model.to(device=device)
+model = torch.compile(model)
 # training loop
 
 for iter in range(train_iters):
@@ -229,7 +230,7 @@ for iter in range(train_iters):
                 'best_val_loss': best_val_loss,
             }
             print(f"saving model checkpoint to {out_dir}")
-            torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))
+            torch.save(checkpoint, os.path.join(out_dir, 'ckpt_01.pt'))
 
     optimizer.zero_grad(set_to_none=True)
     lossi = 0.0
