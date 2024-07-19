@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 parser = argparse.ArgumentParser(description="file contains raw implementation of a transformer")
-parser.add_argument('--resume', help="Resume training or start new", default=True, type=bool)
+parser.add_argument('--resume', help="Resume training or start new", default=False, type=bool)
 args = parser.parse_args()
 
 
@@ -18,18 +18,18 @@ t0 = time.time()
 # HyperParameters
 learning_rate=3e-5
 train_iters=1000
-grad_accum_steps=24
-n_embd = 384
-n_heads = 8
-n_layer =  4
-block_size = 128
-batch_size = 16
+grad_accum_steps=16
+n_embd = 768
+n_heads = 12
+n_layer =  12
+block_size = 512
+batch_size = 64
 split = 0.9
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 20
 eval_interval = 5
-dropout=0.2
-out_dir = '/home/syednoor/Desktop/FAIR/Autoregressive-Transformer/models'
+dropout=0.3
+out_dir = 'home/ec2-user/FAIR/Autoregressive-Transformer/models'
 model_args = dict(n_layer=n_layer, n_head=n_heads, n_embd=n_embd, block_size=block_size,
                  vocab_size=None, dropout=dropout)
 
@@ -189,10 +189,13 @@ class LanguageModel(nn.Module):
             idx = torch.cat((idx, preds), dim=-1)
         return idx
 
+torch.set_float32_matmul_precision('high')
 # Instantiating and moving the model to device.
 model = LanguageModel()
+print("Compiling model!!!")
 # creating optimizer
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+print("Print using fused optimizer!!")
 # best_val_loss so far
 best_val_loss = 4.00
 
@@ -237,8 +240,9 @@ for iter in range(train_iters):
     for microstep in range(grad_accum_steps):
         x, y = get_batch('train')
         logits, loss = model(x, y)
+        loss = loss / grad_accum_steps
         loss.backward() # accumulating the gradients
-        lossi += loss.item() / grad_accum_steps
+        lossi += loss.detach()
     norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     optimizer.step()
 
